@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Folder, Loader2, Wand2, AlertTriangle, Sparkles, Mic, MicOff } from 'lucide-react';
+import { X, Folder, Loader2, Wand2, AlertTriangle, Sparkles, Mic, MicOff, ChevronDown } from 'lucide-react';
 import { Category, Item } from '../types';
-import { generateListContent, GeneratedList } from '../services/aiService';
+import { generateListContent, GeneratedList, AVAILABLE_GEMINI_MODELS } from '../services/aiService';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import geminiIconUrl from '../assets/gemini.svg';
 
@@ -22,6 +22,24 @@ export const AIListGeneratorModal: React.FC<AIListGeneratorModalProps> = ({ isOp
     const [isSaving, setIsSaving] = useState(false);
     const [isCreatingCategory, setIsCreatingCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
+    const [errorDetails, setErrorDetails] = useState<string | null>(null);
+    const [isErrorDetailsOpen, setIsErrorDetailsOpen] = useState(false);
+    const [selectedModel, setSelectedModel] = useState<string>(() => {
+        try {
+            return localStorage.getItem('looplist_gemini_model') || import.meta.env.VITE_GEMINI_MODEL || AVAILABLE_GEMINI_MODELS[0].id;
+        } catch {
+            return import.meta.env.VITE_GEMINI_MODEL || AVAILABLE_GEMINI_MODELS[0].id;
+        }
+    });
+
+    const handleModelChange = (modelId: string) => {
+        setSelectedModel(modelId);
+        try {
+            localStorage.setItem('looplist_gemini_model', modelId);
+        } catch {
+            // ignore
+        }
+    };
 
     const basePromptRef = useRef('');
     const { isListening, transcript, startListening, stopListening, resetTranscript, hasSupport } = useVoiceInput();
@@ -68,6 +86,8 @@ export const AIListGeneratorModal: React.FC<AIListGeneratorModalProps> = ({ isOp
         resetTranscript();
         setPrompt('');
         setError('');
+        setErrorDetails(null);
+        setIsErrorDetailsOpen(false);
         setGeneratedList(null);
         setIsLoading(false);
         setIsCreatingCategory(false);
@@ -86,13 +106,29 @@ export const AIListGeneratorModal: React.FC<AIListGeneratorModalProps> = ({ isOp
 
         setIsLoading(true);
         setError('');
+        setErrorDetails(null);
+        setIsErrorDetailsOpen(false);
         setGeneratedList(null);
 
         try {
-            const result = await generateListContent(prompt);
+            const result = await generateListContent(prompt, selectedModel);
             setGeneratedList(result);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Ett oväntat fel uppstod vid generering.');
+            let message = 'Ett oväntat fel uppstod vid generering.';
+            let details: string | null = null;
+            if (err instanceof Error) {
+                message = err.message;
+                if ('rawDetails' in err && typeof (err as { rawDetails?: unknown }).rawDetails === 'string') {
+                    details = (err as { rawDetails: string }).rawDetails;
+                } else {
+                    details = err.stack || err.message;
+                }
+            } else if (typeof err === 'string') {
+                message = err;
+                details = err;
+            }
+            setError(message);
+            setErrorDetails(details);
         } finally {
             setIsLoading(false);
         }
@@ -123,6 +159,7 @@ export const AIListGeneratorModal: React.FC<AIListGeneratorModalProps> = ({ isOp
 
         setIsSaving(true);
         setError('');
+        setErrorDetails(null);
 
         try {
             if (isCreatingCategory && onAddCategory) {
@@ -137,8 +174,9 @@ export const AIListGeneratorModal: React.FC<AIListGeneratorModalProps> = ({ isOp
 
             await onSave(generatedList.title, formattedItems, targetCategoryId, prompt);
             handleClose();
-        } catch {
+        } catch (err) {
             setError('Kunde inte spara listan. Vänligen försök igen.');
+            setErrorDetails(err instanceof Error ? err.stack || err.message : String(err));
         } finally {
             setIsSaving(false);
         }
@@ -149,19 +187,39 @@ export const AIListGeneratorModal: React.FC<AIListGeneratorModalProps> = ({ isOp
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-2xl w-full overflow-hidden transform transition-all">
                 <div className="p-6">
                     {/* Header */}
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
                         <div className="flex items-center gap-2">
                             <img src={geminiIconUrl} alt="Gemini" className="w-5 h-5 drop-shadow-sm" />
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                                 Skapa lista med AI
                             </h3>
                         </div>
-                        <button
-                            onClick={handleClose}
-                            className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors"
-                        >
-                            <X size={20} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <div className="relative">
+                                <select
+                                    id="ai-model-select"
+                                    aria-label="Välj AI-modell"
+                                    value={selectedModel}
+                                    onChange={(e) => handleModelChange(e.target.value)}
+                                    disabled={isLoading || isSaving}
+                                    className="text-xs bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-lg pl-2.5 pr-7 py-1.5 font-medium outline-none focus:ring-2 focus:ring-purple-500 appearance-none cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {AVAILABLE_GEMINI_MODELS.map((m) => (
+                                        <option key={m.id} value={m.id}>
+                                            {m.name} ({m.description})
+                                        </option>
+                                    ))}
+                                </select>
+                                <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-purple-600 dark:text-purple-400" />
+                            </div>
+                            <button
+                                onClick={handleClose}
+                                className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors p-1 rounded-lg"
+                                aria-label="Stäng"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
                     </div>
 
                     <div className="space-y-4">
@@ -212,19 +270,41 @@ export const AIListGeneratorModal: React.FC<AIListGeneratorModalProps> = ({ isOp
                             {error && !generatedList && (
                                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-200 mt-2 shadow-sm border-l-4 border-l-red-500">
                                     <AlertTriangle className="text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" size={18} />
-                                    <div className="flex-1">
-                                        <div className="flex items-start justify-between">
-                                            <div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0 flex-1">
                                                 <h4 className="text-sm font-semibold text-red-800 dark:text-red-300 mb-1">Ett fel uppstod</h4>
-                                                <p className="text-sm text-red-600 dark:text-red-400 leading-relaxed">{error}</p>
+                                                <p className="text-sm text-red-600 dark:text-red-400 leading-relaxed break-words">{error}</p>
                                             </div>
                                             <button 
                                                 onClick={handleGenerate}
-                                                className="text-xs font-bold text-red-700 dark:text-red-400 hover:underline uppercase tracking-wider ml-4 mt-0.5 whitespace-nowrap"
+                                                className="text-xs font-bold text-red-700 dark:text-red-400 hover:underline uppercase tracking-wider ml-4 mt-0.5 whitespace-nowrap cursor-pointer"
                                             >
                                                 Försök igen
                                             </button>
                                         </div>
+
+                                        {errorDetails && (
+                                            <div className="mt-3 pt-2.5 border-t border-red-200/60 dark:border-red-800/60">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsErrorDetailsOpen(!isErrorDetailsOpen)}
+                                                    className="flex items-center gap-1.5 text-xs font-semibold text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 transition-colors cursor-pointer"
+                                                    aria-expanded={isErrorDetailsOpen}
+                                                >
+                                                    <ChevronDown
+                                                        size={14}
+                                                        className={`transition-transform duration-200 ${isErrorDetailsOpen ? 'rotate-180' : ''}`}
+                                                    />
+                                                    <span>{isErrorDetailsOpen ? 'Dölj felmeddelande från modellen' : 'Visa felmeddelande från modellen'}</span>
+                                                </button>
+                                                {isErrorDetailsOpen && (
+                                                    <div className="mt-2 p-3 bg-red-100/70 dark:bg-black/40 rounded-lg border border-red-200/80 dark:border-red-800/80 text-xs font-mono text-red-950 dark:text-red-200 overflow-x-auto max-h-56 whitespace-pre-wrap break-words select-all">
+                                                        {errorDetails}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -353,9 +433,30 @@ export const AIListGeneratorModal: React.FC<AIListGeneratorModalProps> = ({ isOp
                                 {error && (
                                     <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-200 shadow-sm border-l-4 border-l-red-500">
                                         <AlertTriangle className="text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" size={18} />
-                                        <div>
+                                        <div className="flex-1 min-w-0">
                                             <h4 className="text-sm font-semibold text-red-800 dark:text-red-300 mb-1">Kunde inte spara</h4>
-                                            <p className="text-sm text-red-600 dark:text-red-400 leading-relaxed">{error}</p>
+                                            <p className="text-sm text-red-600 dark:text-red-400 leading-relaxed break-words">{error}</p>
+                                            {errorDetails && (
+                                                <div className="mt-3 pt-2.5 border-t border-red-200/60 dark:border-red-800/60">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIsErrorDetailsOpen(!isErrorDetailsOpen)}
+                                                        className="flex items-center gap-1.5 text-xs font-semibold text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 transition-colors cursor-pointer"
+                                                        aria-expanded={isErrorDetailsOpen}
+                                                    >
+                                                        <ChevronDown
+                                                            size={14}
+                                                            className={`transition-transform duration-200 ${isErrorDetailsOpen ? 'rotate-180' : ''}`}
+                                                        />
+                                                        <span>{isErrorDetailsOpen ? 'Dölj felmeddelande från modellen' : 'Visa felmeddelande från modellen'}</span>
+                                                    </button>
+                                                    {isErrorDetailsOpen && (
+                                                        <div className="mt-2 p-3 bg-red-100/70 dark:bg-black/40 rounded-lg border border-red-200/80 dark:border-red-800/80 text-xs font-mono text-red-950 dark:text-red-200 overflow-x-auto max-h-56 whitespace-pre-wrap break-words select-all">
+                                                            {errorDetails}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}

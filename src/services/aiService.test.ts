@@ -76,6 +76,26 @@ describe('aiService - generateListContent', () => {
         await expect(generateListContent('test')).rejects.toThrow(/överbelastad/);
     });
 
+    it('throws AIError with user-friendly message and rawDetails on 503 high demand', async () => {
+        vi.stubEnv('VITE_GEMINI_KEY', 'test-api-key');
+
+        const rawErrorMsg = '[GoogleGenerativeAI Error]: Error fetching from https://...: [503 Service Unavailable] {"error": {"code": 503, "message": "This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.", "status": "UNAVAILABLE"}}';
+        mockGenerateContent.mockRejectedValueOnce(new Error(rawErrorMsg));
+
+        const { generateListContent, AIError } = await import('./aiService');
+        
+        let caughtError: unknown;
+        try {
+            await generateListContent('test');
+        } catch (e) {
+            caughtError = e;
+        }
+
+        expect(caughtError).toBeInstanceOf(AIError);
+        expect((caughtError as InstanceType<typeof AIError>).message).toMatch(/503 High Demand/);
+        expect((caughtError as InstanceType<typeof AIError>).rawDetails).toContain('This model is currently experiencing high demand');
+    });
+
     it('throws user-friendly error for invalid API key', async () => {
         vi.stubEnv('VITE_GEMINI_KEY', 'bad-key');
 
@@ -140,6 +160,25 @@ describe('aiService - generateListContent', () => {
         expect(mockGetGenerativeModel).toHaveBeenCalledWith(
             expect.objectContaining({
                 model: 'custom-model',
+            })
+        );
+    });
+
+    it('uses modelOverride when passed directly to generateListContent', async () => {
+        vi.stubEnv('VITE_GEMINI_KEY', 'test-api-key');
+        vi.stubEnv('VITE_GEMINI_MODEL', 'env-model');
+
+        const payload = { title: 'Shopping', items: ['Milk'] };
+        mockGenerateContent.mockResolvedValueOnce({
+            response: { text: () => JSON.stringify(payload) },
+        });
+
+        const { generateListContent } = await import('./aiService');
+        await generateListContent('a shopping list', 'gemini-2.5-flash');
+
+        expect(mockGetGenerativeModel).toHaveBeenCalledWith(
+            expect.objectContaining({
+                model: 'gemini-2.5-flash',
             })
         );
     });

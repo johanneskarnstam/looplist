@@ -11,13 +11,35 @@ export interface GeneratedList {
     items: string[];
 }
 
-export const generateListContent = async (prompt: string): Promise<GeneratedList> => {
+export class AIError extends Error {
+    rawDetails?: string;
+
+    constructor(message: string, rawDetails?: string) {
+        super(message);
+        this.name = 'AIError';
+        this.rawDetails = rawDetails;
+    }
+}
+
+export interface AIModelOption {
+    id: string;
+    name: string;
+    description: string;
+}
+
+export const AVAILABLE_GEMINI_MODELS: AIModelOption[] = [
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Snabb & stabil' },
+    { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', description: 'Nyast & smartast' },
+    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Hög precision' },
+];
+
+export const generateListContent = async (prompt: string, modelOverride?: string): Promise<GeneratedList> => {
     if (!apiKey) {
         throw new Error("Ingen API-nyckel hittades. Vänligen lägg till VITE_GEMINI_KEY i din .env-fil.");
     }
 
     try {
-        const modelName = import.meta.env.VITE_GEMINI_MODEL || "gemini-3.8-flash";
+        const modelName = modelOverride || import.meta.env.VITE_GEMINI_MODEL || "gemini-3.8-flash";
         const model = genAI.getGenerativeModel({
             model: modelName,
             systemInstruction: 'Du är en expert på att skapa strukturerade listor. Ta hänsyn till alla detaljer i användarens prompt. Svara ALLTID med ett strikt JSON-objekt: { "title": string, "items": string[] }. Ge inga förklaringar eller annan text, bara JSON.'
@@ -40,6 +62,30 @@ export const generateListContent = async (prompt: string): Promise<GeneratedList
     } catch (error) {
         console.error("Error generating list with AI:", error);
         
+        let rawDetails = '';
+        if (error instanceof Error) {
+            rawDetails = error.message;
+        } else if (typeof error === 'object' && error !== null) {
+            try {
+                rawDetails = JSON.stringify(error, null, 2);
+            } catch {
+                rawDetails = String(error);
+            }
+        } else {
+            rawDetails = String(error);
+        }
+
+        // Extract embedded JSON error object if returned inside error string
+        const jsonSub = rawDetails.match(/\{[\s\S]*\}/);
+        if (jsonSub) {
+            try {
+                const parsed = JSON.parse(jsonSub[0]);
+                rawDetails = JSON.stringify(parsed, null, 2);
+            } catch {
+                // keep original rawDetails
+            }
+        }
+
         let errorMessage = "Kunde inte generera lista. Kontrollera din prompt eller försök igen senare.";
         
         if (error instanceof Error) {
@@ -48,6 +94,8 @@ export const generateListContent = async (prompt: string): Promise<GeneratedList
                 errorMessage = "Ogiltig API-nyckel för AI-tjänsten. Vänligen kontrollera dina inställningar.";
             } else if (raw.includes("fetch failed") || raw.includes("network error") || raw.includes("failed to fetch")) {
                 errorMessage = "Nätverksfel: Kunde inte ansluta till AI-tjänsten. Kontrollera din internetanslutning.";
+            } else if (raw.includes("503") || raw.includes("high demand") || raw.includes("unavailable")) {
+                errorMessage = "Modellen är tillfälligt överbelastad (503 High Demand). Vänligen vänta en stund och försök igen.";
             } else if (raw.includes("429") || raw.includes("quota") || raw.includes("too many requests")) {
                 errorMessage = "Servern är överbelastad just nu. Vänligen vänta en liten stund och försök igen.";
             } else if (raw.includes("safety") || raw.includes("blocked")) {
@@ -61,6 +109,6 @@ export const generateListContent = async (prompt: string): Promise<GeneratedList
             }
         }
         
-        throw new Error(errorMessage);
+        throw new AIError(errorMessage, rawDetails);
     }
 };

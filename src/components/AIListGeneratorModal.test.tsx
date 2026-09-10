@@ -4,9 +4,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as aiService from '../services/aiService';
 
 // Mock aiService
-vi.mock('../services/aiService', () => ({
-    generateListContent: vi.fn(),
-}));
+vi.mock('../services/aiService', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../services/aiService')>();
+    return {
+        ...actual,
+        generateListContent: vi.fn(),
+    };
+});
 
 // Mock assets
 vi.mock('../assets/gemini.svg', () => ({
@@ -85,7 +89,38 @@ describe('AIListGeneratorModal', () => {
 
         await waitFor(() => {
             expect(aiService.generateListContent).toHaveBeenCalledTimes(2);
-            expect(aiService.generateListContent).toHaveBeenLastCalledWith('Packing for Hawaii with snorkeling');
+            expect(aiService.generateListContent).toHaveBeenLastCalledWith('Packing for Hawaii with snorkeling', expect.any(String));
+        });
+    });
+
+    it('allows selecting different Gemini models via dropdown and sends model to service', async () => {
+        vi.mocked(aiService.generateListContent).mockResolvedValue({
+            title: 'Test List',
+            items: ['Item 1']
+        });
+
+        render(
+            <AIListGeneratorModal 
+                isOpen={true} 
+                onClose={mockOnClose} 
+                onSave={mockOnSave} 
+                categories={mockCategories} 
+            />
+        );
+
+        const modelSelect = screen.getByLabelText('Välj AI-modell');
+        expect(modelSelect).toBeDefined();
+
+        fireEvent.change(modelSelect, { target: { value: 'gemini-2.5-pro' } });
+
+        const textarea = screen.getByPlaceholderText(/Ex: Packlista för en snowboardresa/);
+        fireEvent.change(textarea, { target: { value: 'Pro test' } });
+
+        const generateButton = screen.getByText('Generera list-förslag');
+        fireEvent.click(generateButton);
+
+        await waitFor(() => {
+            expect(aiService.generateListContent).toHaveBeenCalledWith('Pro test', 'gemini-2.5-pro');
         });
     });
 
@@ -123,6 +158,54 @@ describe('AIListGeneratorModal', () => {
             expect(screen.getByText('Success')).toBeDefined();
             expect(screen.queryByText('Ett fel uppstod')).toBeNull();
         });
+    });
+
+    it('shows accordion with raw model error details when generation fails', async () => {
+        const error = new Error('Modellen är tillfälligt överbelastad (503 High Demand).');
+        (error as Error & { rawDetails: string }).rawDetails = JSON.stringify({
+            error: {
+                code: 503,
+                message: 'This model is currently experiencing high demand.',
+                status: 'UNAVAILABLE'
+            }
+        }, null, 2);
+
+        vi.mocked(aiService.generateListContent).mockRejectedValue(error);
+
+        render(
+            <AIListGeneratorModal 
+                isOpen={true} 
+                onClose={mockOnClose} 
+                onSave={mockOnSave} 
+                categories={mockCategories} 
+            />
+        );
+
+        const textarea = screen.getByPlaceholderText(/Ex: Packlista för en snowboardresa/);
+        fireEvent.change(textarea, { target: { value: 'Test prompt' } });
+
+        const generateButton = screen.getByText('Generera list-förslag');
+        fireEvent.click(generateButton);
+
+        await waitFor(() => {
+            expect(screen.getByText(/Modellen är tillfälligt överbelastad/)).toBeDefined();
+        });
+
+        // The accordion toggle button is visible
+        const accordionBtn = screen.getByRole('button', { name: /Visa felmeddelande från modellen/i });
+        expect(accordionBtn).toBeDefined();
+
+        // Details should not be shown initially
+        expect(screen.queryByText(/This model is currently experiencing high demand/)).toBeNull();
+
+        // Click to open accordion
+        fireEvent.click(accordionBtn);
+        expect(screen.getByText(/This model is currently experiencing high demand/)).toBeDefined();
+        expect(screen.getByRole('button', { name: /Dölj felmeddelande från modellen/i })).toBeDefined();
+
+        // Click to close accordion
+        fireEvent.click(screen.getByRole('button', { name: /Dölj felmeddelande från modellen/i }));
+        expect(screen.queryByText(/This model is currently experiencing high demand/)).toBeNull();
     });
 
     it('renders cleanly when opening without hook order errors', () => {
@@ -216,7 +299,7 @@ describe('AIListGeneratorModal', () => {
         );
 
         // Click close button
-        const closeBtn = screen.getByRole('button', { name: '' });
+        const closeBtn = screen.getByRole('button', { name: 'Stäng' });
         fireEvent.click(closeBtn);
 
         expect(mockStopListening).toHaveBeenCalled();
