@@ -1,5 +1,15 @@
 [
   {
+    "hash": "d7f1dc377540805d4ec96862caf7324b2975173f",
+    "date": "2026-09-10 17:55:12 +0200",
+    "message": "feat: add model selector dropdown and detailed error accordion in AI modal"
+  },
+  {
+    "hash": "d7ff012b79cb1e763eacfd5bc3e1a33dcab4c3b4",
+    "date": "2026-09-10 17:11:12 +0200",
+    "message": "feat: update Gemini model and add voice input for AI list generation"
+  },
+  {
     "hash": "b4a4c1aa9bab3d6762dadab0e3615136608e6abc",
     "date": "2026-09-02 09:16:04 +0200",
     "message": "feat: Manuell hantering av sortering"
@@ -88,15 +98,5 @@
     "hash": "3420ef49a937e4323c7c80709165da9a37488f8e",
     "date": "2026-05-22 15:31:19 +0200",
     "message": "fix: safely handle lists with missing items array (GitHub Pages crash)"
-  },
-  {
-    "hash": "78fae427c7c536bf4bd74b14523bf2afe83b9bb0",
-    "date": "2026-05-21 09:00:53 +0200",
-    "message": "mc"
-  },
-  {
-    "hash": "7680a37e85abc9c1d939e6080a6458ec4bde9b86",
-    "date": "2026-05-21 07:14:58 +0200",
-    "message": "fix: add nullish checks on list/item names and texts before sorting with localeCompare"
   }
 ]

@@ -6,9 +6,15 @@ const apiKey = import.meta.env.VITE_GEMINI_KEY || import.meta.env.VITE_GEMINI_AP
 
 const genAI = new GoogleGenerativeAI(apiKey);
 
+export interface GeneratedCategory {
+    name: string;
+    items: string[];
+}
+
 export interface GeneratedList {
     title: string;
     items: string[];
+    categories?: GeneratedCategory[];
 }
 
 export class AIError extends Error {
@@ -42,7 +48,7 @@ export const generateListContent = async (prompt: string, modelOverride?: string
         const modelName = modelOverride || import.meta.env.VITE_GEMINI_MODEL || "gemini-3.8-flash";
         const model = genAI.getGenerativeModel({
             model: modelName,
-            systemInstruction: 'Du är en expert på att skapa strukturerade listor. Ta hänsyn till alla detaljer i användarens prompt. Svara ALLTID med ett strikt JSON-objekt: { "title": string, "items": string[] }. Ge inga förklaringar eller annan text, bara JSON.'
+            systemInstruction: 'Du är en expert på att skapa strukturerade listor. Ta hänsyn till alla detaljer i användarens prompt. Svara ALLTID med ett strikt JSON-objekt. Om listans innehåll logiskt kan grupperas i 2–5 kategorier, inkludera ett "categories"-fält. Om ingen tydlig gruppering finns, utelämna "categories". Format med kategorier: { "title": string, "items": string[], "categories": [{ "name": string, "items": string[] }] }. Format utan kategorier: { "title": string, "items": string[] }. Ge inga förklaringar eller annan text, bara JSON.'
         });
 
         const result = await model.generateContent(prompt);
@@ -56,6 +62,21 @@ export const generateListContent = async (prompt: string, modelOverride?: string
 
         if (!data.title || !Array.isArray(data.items)) {
             throw new Error("Invalid response format from AI.");
+        }
+
+        // Validate categories if present
+        if (data.categories !== undefined) {
+            if (!Array.isArray(data.categories)) {
+                // Malformed categories – strip them and fall back to flat
+                console.warn('AI returned malformed categories, falling back to flat list.');
+                data.categories = undefined;
+            } else {
+                // Ensure each category has name and items array
+                const validCategories = data.categories.filter(
+                    (cat) => typeof cat.name === 'string' && Array.isArray(cat.items)
+                );
+                data.categories = validCategories.length > 0 ? validCategories : undefined;
+            }
         }
 
         return data;

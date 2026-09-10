@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Folder, Loader2, Wand2, AlertTriangle, Sparkles, Mic, MicOff, ChevronDown } from 'lucide-react';
-import { Category, Item } from '../types';
+import { Category, Item, Section } from '../types';
 import { generateListContent, GeneratedList, AVAILABLE_GEMINI_MODELS } from '../services/aiService';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import geminiIconUrl from '../assets/gemini.svg';
@@ -8,7 +8,7 @@ import geminiIconUrl from '../assets/gemini.svg';
 interface AIListGeneratorModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (name: string, items: Item[], categoryId: string, aiPrompt?: string) => Promise<void>;
+    onSave: (name: string, items: Item[], categoryId: string, aiPrompt?: string, sections?: Section[]) => Promise<void>;
     categories: Category[];
     onAddCategory?: (name: string) => Promise<string>;
 }
@@ -24,6 +24,7 @@ export const AIListGeneratorModal: React.FC<AIListGeneratorModalProps> = ({ isOp
     const [newCategoryName, setNewCategoryName] = useState('');
     const [errorDetails, setErrorDetails] = useState<string | null>(null);
     const [isErrorDetailsOpen, setIsErrorDetailsOpen] = useState(false);
+    const [viewMode, setViewMode] = useState<'flat' | 'categories'>('flat');
     const [selectedModel, setSelectedModel] = useState<string>(() => {
         try {
             return localStorage.getItem('looplist_gemini_model') || import.meta.env.VITE_GEMINI_MODEL || AVAILABLE_GEMINI_MODELS[0].id;
@@ -31,6 +32,15 @@ export const AIListGeneratorModal: React.FC<AIListGeneratorModalProps> = ({ isOp
             return import.meta.env.VITE_GEMINI_MODEL || AVAILABLE_GEMINI_MODELS[0].id;
         }
     });
+
+    // Automatically set viewMode based on whether categories exist
+    useEffect(() => {
+        if (generatedList?.categories?.length) {
+            setViewMode('categories');
+        } else {
+            setViewMode('flat');
+        }
+    }, [generatedList]);
 
     const handleModelChange = (modelId: string) => {
         setSelectedModel(modelId);
@@ -113,6 +123,8 @@ export const AIListGeneratorModal: React.FC<AIListGeneratorModalProps> = ({ isOp
         try {
             const result = await generateListContent(prompt, selectedModel);
             setGeneratedList(result);
+            // Auto-select categories view if AI returned categories
+            setViewMode(result.categories && result.categories.length > 0 ? 'categories' : 'flat');
         } catch (err) {
             let message = 'Ett oväntat fel uppstod vid generering.';
             let details: string | null = null;
@@ -136,8 +148,6 @@ export const AIListGeneratorModal: React.FC<AIListGeneratorModalProps> = ({ isOp
 
     const handleSave = async () => {
         if (!generatedList) return;
-        
-        let targetCategoryId = selectedCategoryId;
 
         if (isCreatingCategory) {
             if (!newCategoryName.trim()) {
@@ -162,17 +172,39 @@ export const AIListGeneratorModal: React.FC<AIListGeneratorModalProps> = ({ isOp
         setErrorDetails(null);
 
         try {
+            let targetCategoryId = selectedCategoryId;
             if (isCreatingCategory && onAddCategory) {
                 targetCategoryId = await onAddCategory(newCategoryName);
             }
 
-            const formattedItems: Item[] = generatedList.items.map(text => ({
-                id: crypto.randomUUID(),
-                text,
-                completed: false
-            }));
+            let sections: Section[] | undefined;
+            let formattedItems: Item[];
 
-            await onSave(generatedList.title, formattedItems, targetCategoryId, prompt);
+            if (viewMode === 'categories' && generatedList.categories && generatedList.categories.length > 0) {
+                // Build Section objects
+                sections = generatedList.categories.map((cat, i) => ({
+                    id: crypto.randomUUID(),
+                    name: cat.name,
+                    order: i,
+                }));
+                // Assign sectionId to each item
+                formattedItems = generatedList.categories.flatMap((cat, catIdx) =>
+                    cat.items.map(text => ({
+                        id: crypto.randomUUID(),
+                        text,
+                        completed: false,
+                        sectionId: sections![catIdx].id,
+                    }))
+                );
+            } else {
+                formattedItems = generatedList.items.map(text => ({
+                    id: crypto.randomUUID(),
+                    text,
+                    completed: false
+                }));
+            }
+
+            await onSave(generatedList.title, formattedItems, targetCategoryId, prompt, sections);
             handleClose();
         } catch (err) {
             setError('Kunde inte spara listan. Vänligen försök igen.');
@@ -353,14 +385,61 @@ export const AIListGeneratorModal: React.FC<AIListGeneratorModalProps> = ({ isOp
                                     <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-3 pb-3 border-b border-purple-200 dark:border-purple-800">
                                         {generatedList.title}
                                     </h4>
-                                    <ul className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                                        {generatedList.items.map((item, index) => (
-                                            <li key={index} className="flex items-start gap-2">
-                                                <span className="text-purple-500 mt-1 flex-shrink-0">•</span>
-                                                <span className="text-gray-700 dark:text-gray-300 text-sm">{item}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
+
+                                    {/* View mode toggle – only when AI returned categories */}
+                                    {generatedList.categories && generatedList.categories.length > 0 && (
+                                        <div className="flex gap-1 mb-4 p-1 bg-purple-100/60 dark:bg-purple-900/30 rounded-lg w-fit">
+                                            <button
+                                                onClick={() => setViewMode('categories')}
+                                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                                                    viewMode === 'categories'
+                                                        ? 'bg-white dark:bg-gray-800 text-purple-700 dark:text-purple-300 shadow-sm'
+                                                        : 'text-purple-500 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-200'
+                                                }`}
+                                            >
+                                                Med kategorier
+                                            </button>
+                                            <button
+                                                onClick={() => setViewMode('flat')}
+                                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                                                    viewMode === 'flat'
+                                                        ? 'bg-white dark:bg-gray-800 text-purple-700 dark:text-purple-300 shadow-sm'
+                                                        : 'text-purple-500 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-200'
+                                                }`}
+                                            >
+                                                Platt lista
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {viewMode === 'categories' && generatedList.categories && generatedList.categories.length > 0 ? (
+                                        <div className="space-y-4 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                                            {generatedList.categories.map((cat) => (
+                                                <div key={cat.name}>
+                                                    <h5 className="text-xs font-semibold uppercase tracking-wider text-purple-600 dark:text-purple-400 mb-1.5">
+                                                        {cat.name}
+                                                    </h5>
+                                                    <ul className="space-y-1.5">
+                                                        {cat.items.map((item, i) => (
+                                                            <li key={i} className="flex items-start gap-2">
+                                                                <span className="text-purple-400 mt-1 flex-shrink-0">•</span>
+                                                                <span className="text-gray-700 dark:text-gray-300 text-sm">{item}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <ul className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                                            {generatedList.items.map((item, index) => (
+                                                <li key={index} className="flex items-start gap-2">
+                                                    <span className="text-purple-500 mt-1 flex-shrink-0">•</span>
+                                                    <span className="text-gray-700 dark:text-gray-300 text-sm">{item}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2 mb-6">
