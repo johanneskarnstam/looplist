@@ -17,7 +17,7 @@ export const generateListContent = async (prompt: string): Promise<GeneratedList
     }
 
     try {
-        const modelName = import.meta.env.VITE_GEMINI_MODEL || "gemini-3-flash-preview";
+        const modelName = import.meta.env.VITE_GEMINI_MODEL || "gemini-3.8-flash";
         const model = genAI.getGenerativeModel({
             model: modelName,
             systemInstruction: 'Du är en expert på att skapa strukturerade listor. Ta hänsyn till alla detaljer i användarens prompt. Svara ALLTID med ett strikt JSON-objekt: { "title": string, "items": string[] }. Ge inga förklaringar eller annan text, bara JSON.'

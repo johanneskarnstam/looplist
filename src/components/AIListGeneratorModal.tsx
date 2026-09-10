@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { X, Folder, Loader2, Wand2, AlertTriangle, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Folder, Loader2, Wand2, AlertTriangle, Sparkles, Mic, MicOff } from 'lucide-react';
 import { Category, Item } from '../types';
 import { generateListContent, GeneratedList } from '../services/aiService';
+import { useVoiceInput } from '../hooks/useVoiceInput';
 import geminiIconUrl from '../assets/gemini.svg';
 
 interface AIListGeneratorModalProps {
@@ -22,6 +23,29 @@ export const AIListGeneratorModal: React.FC<AIListGeneratorModalProps> = ({ isOp
     const [isCreatingCategory, setIsCreatingCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
 
+    const basePromptRef = useRef('');
+    const { isListening, transcript, startListening, stopListening, resetTranscript, hasSupport } = useVoiceInput();
+
+    useEffect(() => {
+        if (isListening && transcript) {
+            const combined = basePromptRef.current
+                ? `${basePromptRef.current.trim()} ${transcript.trim()}`
+                : transcript;
+            setPrompt(combined);
+            setError('');
+        }
+    }, [isListening, transcript]);
+
+    const handleToggleVoiceInput = () => {
+        if (isListening) {
+            stopListening();
+        } else {
+            basePromptRef.current = prompt;
+            resetTranscript();
+            startListening();
+        }
+    };
+
     useEffect(() => {
         if (isOpen && categories.length > 0 && !selectedCategoryId) {
             setSelectedCategoryId(categories[0].id);
@@ -38,6 +62,10 @@ export const AIListGeneratorModal: React.FC<AIListGeneratorModalProps> = ({ isOp
     if (!isOpen) return null;
 
     const handleClose = () => {
+        if (isListening) {
+            stopListening();
+        }
+        resetTranscript();
         setPrompt('');
         setError('');
         setGeneratedList(null);
@@ -48,6 +76,9 @@ export const AIListGeneratorModal: React.FC<AIListGeneratorModalProps> = ({ isOp
     };
 
     const handleGenerate = async () => {
+        if (isListening) {
+            stopListening();
+        }
         if (!prompt.trim()) {
             setError('Vänligen beskriv vad du vill ha för lista först.');
             return;
@@ -146,13 +177,37 @@ export const AIListGeneratorModal: React.FC<AIListGeneratorModalProps> = ({ isOp
                                     value={prompt}
                                     onChange={(e) => {
                                         setPrompt(e.target.value);
+                                        basePromptRef.current = e.target.value;
                                         setError('');
                                     }}
                                     placeholder="Ex: Packlista för en snowboardresa i fjällen..."
-                                    className={`w-full p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-sm focus:ring-2 focus:ring-purple-500 outline-none resize-none transition-all placeholder:text-gray-400 disabled:opacity-60 disabled:bg-gray-200 dark:disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed ${generatedList ? 'h-20' : 'h-32'}`}
+                                    className={`w-full p-4 pr-12 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-sm focus:ring-2 focus:ring-purple-500 outline-none resize-none transition-all placeholder:text-gray-400 disabled:opacity-60 disabled:bg-gray-200 dark:disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed ${generatedList ? 'h-20' : 'h-32'}`}
                                     disabled={isLoading || isSaving}
                                 />
+                                {hasSupport && (
+                                    <button
+                                        type="button"
+                                        onClick={handleToggleVoiceInput}
+                                        disabled={isLoading || isSaving}
+                                        title={isListening ? 'Sluta lyssna' : 'Tala in prompt (röstinmatning)'}
+                                        aria-label={isListening ? 'Sluta lyssna' : 'Tala in prompt'}
+                                        className={`absolute right-3 bottom-3 p-2 rounded-lg transition-all flex items-center justify-center cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
+                                            isListening
+                                                ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse shadow-md shadow-red-500/30'
+                                                : 'text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30'
+                                        }`}
+                                    >
+                                        {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                                    </button>
+                                )}
                             </div>
+
+                            {isListening && (
+                                <div className="flex items-center gap-2 text-xs text-red-500 dark:text-red-400 font-medium px-1 animate-pulse" role="status">
+                                    <span className="w-2 h-2 rounded-full bg-red-500 animate-ping inline-block" />
+                                    <span>Lyssnar... tala in din prompt</span>
+                                </div>
+                            )}
 
                             {error && !generatedList && (
                                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-200 mt-2 shadow-sm border-l-4 border-l-red-500">

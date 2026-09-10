@@ -13,6 +13,22 @@ vi.mock('../assets/gemini.svg', () => ({
     default: 'mock-svg-url'
 }));
 
+const mockStartListening = vi.fn();
+const mockStopListening = vi.fn();
+const mockResetTranscript = vi.fn();
+let mockVoiceState = {
+    isListening: false,
+    transcript: '',
+    startListening: mockStartListening,
+    stopListening: mockStopListening,
+    resetTranscript: mockResetTranscript,
+    hasSupport: true,
+};
+
+vi.mock('../hooks/useVoiceInput', () => ({
+    useVoiceInput: () => mockVoiceState,
+}));
+
 describe('AIListGeneratorModal', () => {
     const mockOnClose = vi.fn();
     const mockOnSave = vi.fn();
@@ -20,6 +36,14 @@ describe('AIListGeneratorModal', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        mockVoiceState = {
+            isListening: false,
+            transcript: '',
+            startListening: mockStartListening,
+            stopListening: mockStopListening,
+            resetTranscript: mockResetTranscript,
+            hasSupport: true,
+        };
     });
 
     it('allows rephrasing and regenerating after initial generation', async () => {
@@ -124,5 +148,78 @@ describe('AIListGeneratorModal', () => {
         );
 
         expect(screen.getByText('Skapa lista med AI')).toBeDefined();
+    });
+
+    it('renders voice input mic button when supported and handles toggling', () => {
+        render(
+            <AIListGeneratorModal 
+                isOpen={true} 
+                onClose={mockOnClose} 
+                onSave={mockOnSave} 
+                categories={mockCategories} 
+            />
+        );
+
+        const micButton = screen.getByLabelText('Tala in prompt');
+        expect(micButton).toBeDefined();
+
+        fireEvent.click(micButton);
+        expect(mockResetTranscript).toHaveBeenCalled();
+        expect(mockStartListening).toHaveBeenCalled();
+    });
+
+    it('stops listening when clicking the active mic button', () => {
+        mockVoiceState.isListening = true;
+
+        render(
+            <AIListGeneratorModal 
+                isOpen={true} 
+                onClose={mockOnClose} 
+                onSave={mockOnSave} 
+                categories={mockCategories} 
+            />
+        );
+
+        expect(screen.getByText(/Lyssnar... tala in din prompt/)).toBeDefined();
+        const activeMicButton = screen.getByLabelText('Sluta lyssna');
+        fireEvent.click(activeMicButton);
+
+        expect(mockStopListening).toHaveBeenCalled();
+    });
+
+    it('updates textarea prompt as speech transcript arrives', () => {
+        mockVoiceState.isListening = true;
+        mockVoiceState.transcript = 'Packlista för fjällen';
+
+        render(
+            <AIListGeneratorModal 
+                isOpen={true} 
+                onClose={mockOnClose} 
+                onSave={mockOnSave} 
+                categories={mockCategories} 
+            />
+        );
+
+        expect(screen.getByDisplayValue('Packlista för fjällen')).toBeDefined();
+    });
+
+    it('stops voice listening when user closes the modal', () => {
+        mockVoiceState.isListening = true;
+
+        render(
+            <AIListGeneratorModal 
+                isOpen={true} 
+                onClose={mockOnClose} 
+                onSave={mockOnSave} 
+                categories={mockCategories} 
+            />
+        );
+
+        // Click close button
+        const closeBtn = screen.getByRole('button', { name: '' });
+        fireEvent.click(closeBtn);
+
+        expect(mockStopListening).toHaveBeenCalled();
+        expect(mockOnClose).toHaveBeenCalled();
     });
 });

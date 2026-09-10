@@ -1,15 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockGenerateContent = vi.fn();
+const mockGetGenerativeModel = vi.fn().mockImplementation(() => ({
+    generateContent: mockGenerateContent,
+}));
 
 vi.mock('@google/generative-ai', () => {
     return {
         GoogleGenerativeAI: class {
-            getGenerativeModel() {
-                return {
-                    generateContent: mockGenerateContent,
-                };
-            }
+            getGenerativeModel = mockGetGenerativeModel;
         },
     };
 });
@@ -106,4 +105,43 @@ describe('aiService - generateListContent', () => {
         const { generateListContent } = await import('./aiService');
         await expect(generateListContent('test')).rejects.toThrow(/format/i);
     });
+
+    it('uses gemini-3.8-flash by default when VITE_GEMINI_MODEL is not set', async () => {
+        vi.stubEnv('VITE_GEMINI_KEY', 'test-api-key');
+        vi.stubEnv('VITE_GEMINI_MODEL', '');
+
+        const payload = { title: 'Shopping', items: ['Milk'] };
+        mockGenerateContent.mockResolvedValueOnce({
+            response: { text: () => JSON.stringify(payload) },
+        });
+
+        const { generateListContent } = await import('./aiService');
+        await generateListContent('a shopping list');
+
+        expect(mockGetGenerativeModel).toHaveBeenCalledWith(
+            expect.objectContaining({
+                model: 'gemini-3.8-flash',
+            })
+        );
+    });
+
+    it('uses custom model from VITE_GEMINI_MODEL when configured', async () => {
+        vi.stubEnv('VITE_GEMINI_KEY', 'test-api-key');
+        vi.stubEnv('VITE_GEMINI_MODEL', 'custom-model');
+
+        const payload = { title: 'Shopping', items: ['Milk'] };
+        mockGenerateContent.mockResolvedValueOnce({
+            response: { text: () => JSON.stringify(payload) },
+        });
+
+        const { generateListContent } = await import('./aiService');
+        await generateListContent('a shopping list');
+
+        expect(mockGetGenerativeModel).toHaveBeenCalledWith(
+            expect.objectContaining({
+                model: 'custom-model',
+            })
+        );
+    });
 });
+

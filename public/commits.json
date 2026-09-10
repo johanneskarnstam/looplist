@@ -1,5 +1,10 @@
 [
   {
+    "hash": "b4a4c1aa9bab3d6762dadab0e3615136608e6abc",
+    "date": "2026-09-02 09:16:04 +0200",
+    "message": "feat: Manuell hantering av sortering"
+  },
+  {
     "hash": "3331e6ed6118f525cb5d6fd1378a7f603f2d58c0",
     "date": "2026-09-02 07:21:57 +0200",
     "message": "feat: lägg till WhatsNewModal för att visa användare de senaste ändringarna"
@@ -93,10 +98,5 @@
     "hash": "7680a37e85abc9c1d939e6080a6458ec4bde9b86",
     "date": "2026-05-21 07:14:58 +0200",
     "message": "fix: add nullish checks on list/item names and texts before sorting with localeCompare"
-  },
-  {
-    "hash": "990551ede2ac02b68af04d7d9ecc555e396c972a",
-    "date": "2026-05-21 06:28:11 +0200",
-    "message": "feat: add functionality to import items from another list"
   }
 ]

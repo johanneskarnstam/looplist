@@ -53,21 +53,25 @@ interface WindowWithSpeech extends Window {
 export const useVoiceInput = (): UseVoiceInputReturn => {
     const [isListening, setIsListening] = useState(false);
     const [transcript, setTranscript] = useState('');
-    const [hasSupport, setHasSupport] = useState(true);
+    const [hasSupport, setHasSupport] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        const w = window as unknown as WindowWithSpeech;
+        return !!(w.SpeechRecognition || w.webkitSpeechRecognition);
+    });
     const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
 
     useEffect(() => {
-        const SpeechRecognition = (globalThis as unknown as WindowWithSpeech).webkitSpeechRecognition || (globalThis as unknown as WindowWithSpeech).SpeechRecognition;
+        const SpeechRecognitionClass = (globalThis as unknown as WindowWithSpeech).webkitSpeechRecognition || (globalThis as unknown as WindowWithSpeech).SpeechRecognition;
         
-        if (SpeechRecognition) {
-            const recognitionInstance = new SpeechRecognition();
+        if (SpeechRecognitionClass) {
+            const recognitionInstance = new SpeechRecognitionClass();
             recognitionInstance.continuous = true;
             recognitionInstance.interimResults = true;
             recognitionInstance.lang = 'sv-SE';
 
             recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
                 let currentTranscript = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                for (let i = 0; i < event.results.length; ++i) {
                     currentTranscript += event.results[i][0].transcript;
                 }
                 setTranscript(currentTranscript);
@@ -83,14 +87,28 @@ export const useVoiceInput = (): UseVoiceInputReturn => {
             };
 
             setRecognition(recognitionInstance);
+            setHasSupport(true);
         } else {
             setHasSupport(false);
         }
     }, []);
 
+    useEffect(() => {
+        return () => {
+            if (recognition) {
+                try {
+                    recognition.abort();
+                } catch {
+                    // ignore if already closed
+                }
+            }
+        };
+    }, [recognition]);
+
     const startListening = useCallback(() => {
         if (recognition && !isListening) {
             try {
+                setTranscript('');
                 recognition.start();
                 setIsListening(true);
             } catch (error) {

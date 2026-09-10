@@ -82,7 +82,7 @@ A mobile-first Progressive Web App for managing reusable, recurring lists — bu
 
 ### AI List Generation (Gemini)
 - Describe a list in natural language and let **Google Gemini** generate the items automatically
-- Powered by `@google/generative-ai` with `gemini-3-flash-preview`
+- Powered by `@google/generative-ai` with `gemini-3.8-flash`
 - Preview and edit the generated items before saving
 - Create a new category inline from the AI modal
 - Generated lists are tagged with the original prompt for future reference
@@ -180,7 +180,7 @@ VITE_FIREBASE_STORAGE_BUCKET=...
 VITE_FIREBASE_MESSAGING_SENDER_ID=...
 VITE_FIREBASE_APP_ID=...
 VITE_GEMINI_KEY=...          # Gemini API key for AI list generation
-VITE_GEMINI_MODEL=gemini-3-flash-preview   # optional
+VITE_GEMINI_MODEL=gemini-3.8-flash   # optional
 ```
 
 ### Development
