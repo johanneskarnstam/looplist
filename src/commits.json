@@ -1,5 +1,10 @@
 [
   {
+    "hash": "aa1ee7c458c4f7320e2cf90aa74bf5b4d0287ebd",
+    "date": "2026-09-10 20:55:58 +0200",
+    "message": "feat: implement AI-generated list categories"
+  },
+  {
     "hash": "d7f1dc377540805d4ec96862caf7324b2975173f",
     "date": "2026-09-10 17:55:12 +0200",
     "message": "feat: add model selector dropdown and detailed error accordion in AI modal"
@@ -93,10 +98,5 @@
     "hash": "67d80998668f43011ae305d7a87e96fd5f7a1751",
     "date": "2026-05-22 15:47:15 +0200",
     "message": "feat: move secondary list actions to a collapsible kebab menu and update import translation strings"
-  },
-  {
-    "hash": "3420ef49a937e4323c7c80709165da9a37488f8e",
-    "date": "2026-05-22 15:31:19 +0200",
-    "message": "fix: safely handle lists with missing items array (GitHub Pages crash)"
   }
 ]
