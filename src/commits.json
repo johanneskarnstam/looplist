@@ -1,5 +1,10 @@
 [
   {
+    "hash": "1290a36bf18e4141efc73cfb80c9af0d35498ef8",
+    "date": "2026-09-22 15:53:56 +0200",
+    "message": "Upgraded npm libraries"
+  },
+  {
     "hash": "aa1ee7c458c4f7320e2cf90aa74bf5b4d0287ebd",
     "date": "2026-09-10 20:55:58 +0200",
     "message": "feat: implement AI-generated list categories"
@@ -93,10 +98,5 @@
     "hash": "866c78acaef6832d4ed859b62739ebcc5d8bcb0d",
     "date": "2026-05-22 15:53:07 +0200",
     "message": "fix: add MoreVertical to lucide-react mock in ListDetail tests"
-  },
-  {
-    "hash": "67d80998668f43011ae305d7a87e96fd5f7a1751",
-    "date": "2026-05-22 15:47:15 +0200",
-    "message": "feat: move secondary list actions to a collapsible kebab menu and update import translation strings"
   }
 ]
