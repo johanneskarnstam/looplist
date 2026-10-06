@@ -1,7 +1,7 @@
 {
   "name": "looplist",
   "private": true,
-  "version": "11.1.0",
+  "version": "11.2.0",
   "type": "module",
   "scripts": {
     "dev": "node scripts/generate-commits.js && vite",

@@ -1,5 +1,10 @@
 [
   {
+    "hash": "c5cd73a3f8855467e94d00f6d378a18654b23f1d",
+    "date": "2026-10-06 11:26:29 +0200",
+    "message": "feat: make add item button icon-only, matching reset button size"
+  },
+  {
     "hash": "1a83af5e24c14564276e6ba1040c768b898238e1",
     "date": "2026-10-06 11:04:51 +0200",
     "message": "feat: hide add item field by default, show on button click, add reset button to main view"
@@ -93,10 +98,5 @@
     "hash": "f390413ef50b527413606c303b22b565158b89a5",
     "date": "2026-06-10 06:58:58 +0200",
     "message": "feat: redesign list settings UI and add copy functionality to AI prompts"
-  },
-  {
-    "hash": "0a8e6a01fd5206d955cb9e45e6f84020c171ae29",
-    "date": "2026-05-22 15:58:01 +0200",
-    "message": "chore: remove SONAR_TOKEN secret from pages workflow ci job"
   }
 ]
