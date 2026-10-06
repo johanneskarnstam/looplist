@@ -787,10 +787,10 @@ export const ListDetail: React.FC = React.memo(() => {
                             <button
                                 type="button"
                                 onClick={() => setShowAddItemField(true)}
-                                className="flex-1 flex items-center justify-center gap-2 p-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-700 transition-colors text-gray-600 dark:text-gray-300"
+                                className="p-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-700 transition-colors text-gray-600 dark:text-gray-300"
+                                title={t('lists.addItemButton', 'Lägg till ny punkt')}
                             >
                                 <Plus size={20} />
-                                <span>{t('lists.addItemButton', 'Lägg till ny punkt')}</span>
                             </button>
                             <button
                                 type="button"

@@ -1,5 +1,10 @@
 [
   {
+    "hash": "1a83af5e24c14564276e6ba1040c768b898238e1",
+    "date": "2026-10-06 11:04:51 +0200",
+    "message": "feat: hide add item field by default, show on button click, add reset button to main view"
+  },
+  {
     "hash": "3ba5cc73c27d75e3dd82be48d7a7fd522494c13d",
     "date": "2026-10-06 10:56:31 +0200",
     "message": "commits"
@@ -93,10 +98,5 @@
     "hash": "0a8e6a01fd5206d955cb9e45e6f84020c171ae29",
     "date": "2026-05-22 15:58:01 +0200",
     "message": "chore: remove SONAR_TOKEN secret from pages workflow ci job"
-  },
-  {
-    "hash": "b8778e05ba8042ade8eb4007d70373ae9b0b9f7a",
-    "date": "2026-05-22 15:55:58 +0200",
-    "message": "chore: remove SonarQube integration and configuration from CI workflow"
   }
 ]
