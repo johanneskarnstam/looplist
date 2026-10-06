@@ -51,7 +51,7 @@ export function buildGoogleCalendarUrl({
 }: GoogleCalendarEventParams): string {
     const encodedTitle = encodeURIComponent(title);
     const itemsText = items.map((item) => `• ${item.text}`).join('\n');
-    const deepLink = `https://jojjeboy.github.io/looplist/#/list/${listId}`;
+    const deepLink = `https://johanneskarnstam.github.io/looplist/#/list/${listId}`;
     const htmlLink = `<a href="${deepLink}">${linkText}</a>`;
     const description = encodeURIComponent(`${itemsText}\n\n${htmlLink}`);
 

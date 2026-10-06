@@ -7,7 +7,7 @@ import { Commit } from '../types';
 
 const commits = commitsData as Commit[];
 
-const GITHUB_REPO = 'https://github.com/Jojjeboy/looplist';
+const GITHUB_REPO = 'https://github.com/johanneskarnstam/looplist';
 
 export const ActivityLog: React.FC = () => {
     const { t } = useTranslation();
@@ -77,7 +77,7 @@ export const ActivityLog: React.FC = () => {
 
             <div className="pt-8 pb-12 flex justify-center">
                 <a
-                    href={`${GITHUB_REPO}/commits/master`}
+                    href={`${GITHUB_REPO}/commits/main`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm hover:shadow-md font-semibold text-sm group"
