@@ -151,6 +151,10 @@ describe('ListDetail', () => {
 
     it('adds a new item', () => {
         renderComponent();
+        // Click the add button to show the input field
+        const addButton = screen.getByText('lists.addItemButton');
+        fireEvent.click(addButton);
+        
         const input = screen.getByPlaceholderText('lists.addItemPlaceholder');
         fireEvent.change(input, { target: { value: 'Cherry' } });
 

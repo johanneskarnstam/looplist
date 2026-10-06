@@ -1,5 +1,10 @@
 [
   {
+    "hash": "3ba5cc73c27d75e3dd82be48d7a7fd522494c13d",
+    "date": "2026-10-06 10:56:31 +0200",
+    "message": "commits"
+  },
+  {
     "hash": "1290a36bf18e4141efc73cfb80c9af0d35498ef8",
     "date": "2026-09-22 15:53:56 +0200",
     "message": "Upgraded npm libraries"
@@ -93,10 +98,5 @@
     "hash": "b8778e05ba8042ade8eb4007d70373ae9b0b9f7a",
     "date": "2026-05-22 15:55:58 +0200",
     "message": "chore: remove SonarQube integration and configuration from CI workflow"
-  },
-  {
-    "hash": "866c78acaef6832d4ed859b62739ebcc5d8bcb0d",
-    "date": "2026-05-22 15:53:07 +0200",
-    "message": "fix: add MoreVertical to lucide-react mock in ListDetail tests"
   }
 ]
