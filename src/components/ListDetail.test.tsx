@@ -151,6 +151,10 @@ describe('ListDetail', () => {
 
     it('adds a new item', () => {
         renderComponent();
+        // Click the add button to show the input field
+        const addButton = screen.getByTitle('lists.addItemButton');
+        fireEvent.click(addButton);
+        
         const input = screen.getByPlaceholderText('lists.addItemPlaceholder');
         fireEvent.change(input, { target: { value: 'Cherry' } });
 
@@ -334,12 +338,9 @@ describe('ListDetail', () => {
         expect(screen.queryByText(/lists.completedAccordion/)).toBeNull();
     });
 
-    it('opens export modal from quick settings menu', () => {
+    it('opens export modal from main action buttons', () => {
         renderComponent();
-        const moreButton = screen.getByTitle('common.more');
-        fireEvent.click(moreButton);
-
-        const exportButton = screen.getByText('export.buttonTitle');
+        const exportButton = screen.getByTitle('export.buttonTitle');
         expect(exportButton).toBeDefined();
         fireEvent.click(exportButton);
 
@@ -358,12 +359,9 @@ describe('ListDetail', () => {
         expect(mockArchiveList).toHaveBeenCalledWith('list1', true);
     });
 
-    it('opens import JSON modal from quick settings menu', () => {
+    it('opens import JSON modal from main action buttons', () => {
         renderComponent();
-        const moreButton = screen.getByTitle('common.more');
-        fireEvent.click(moreButton);
-
-        const importJsonButton = screen.getByText('importJson.buttonTitle');
+        const importJsonButton = screen.getByTitle('importJson.buttonTitle');
         expect(importJsonButton).toBeDefined();
         fireEvent.click(importJsonButton);
 

@@ -68,6 +68,7 @@
         },
         "reset": "Reset",
         "addItemPlaceholder": "Add item...",
+        "addItemButton": "Add new item",
         "emptyList": "List is empty.",
         "completedAccordion": "Completed ({{count}})",
         "resetTitle": "Reset List",

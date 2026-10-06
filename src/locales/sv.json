@@ -67,6 +67,7 @@
     },
     "reset": "Återställ",
     "addItemPlaceholder": "Lägg till objekt...",
+    "addItemButton": "Lägg till ny punkt",
     "emptyList": "Listan är tom.",
     "completedAccordion": "Avklarade ({{count}})",
     "resetTitle": "Återställ lista",

@@ -157,6 +157,8 @@ export const ListDetail: React.FC = React.memo(() => {
     const { listId } = useParams<{ listId: string }>();
     const { lists, updateListItems, deleteItem, updateListName, updateListSettings, updateListAccess, archiveList, addSection, updateSection, deleteSection, reorderSections, deleteList, importItemsFromList, importJsonToList } = useApp();
     const [newItemText, setNewItemText] = useState('');
+    const [showAddItemField, setShowAddItemField] = useState(false);
+    const [hideActionButtons, setHideActionButtons] = useState(false);
     const [uncheckModalOpen, setUncheckModalOpen] = useState(false);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -187,6 +189,7 @@ export const ListDetail: React.FC = React.memo(() => {
     const [quickAddSectionId, setQuickAddSectionId] = useState<string | null>(null);
     const [quickAddText, setQuickAddText] = useState('');
     const moreMenuRef = useRef<HTMLDivElement>(null);
+    const addItemRef = useRef<HTMLFormElement>(null);
     const navigate = useNavigate();
     const { hash } = useLocation();
 
@@ -202,6 +205,35 @@ export const ListDetail: React.FC = React.memo(() => {
             setCollapsedSections({});
         }
     }, [listId]);
+
+    // Handle click outside and Escape key for add item field
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (addItemRef.current && !addItemRef.current.contains(event.target as Node)) {
+                setShowAddItemField(false);
+                setHideActionButtons(false);
+                setNewItemText('');
+            }
+        };
+
+        const handleEscapeKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && showAddItemField) {
+                setShowAddItemField(false);
+                setHideActionButtons(false);
+                setNewItemText('');
+            }
+        };
+
+        if (showAddItemField) {
+            document.addEventListener('mousedown', handleClickOutside);
+            document.addEventListener('keydown', handleEscapeKey);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('keydown', handleEscapeKey);
+        };
+    }, [showAddItemField]);
 
     const toggleSectionCollapse = (sectionKey: string) => {
         setCollapsedSections(prev => {
@@ -388,8 +420,13 @@ export const ListDetail: React.FC = React.memo(() => {
         e.preventDefault();
         if (newItemText.trim()) {
             const newItem = { id: uuidv4(), text: newItemText.trim(), completed: false };
-            await updateListItems(list.id, [...list.items, newItem]);
+            // In manual sort mode, prepend to top so the new item appears first
+            const updatedItems = sortBy === 'manual'
+                ? [newItem, ...list.items]
+                : [...list.items, newItem];
+            await updateListItems(list.id, updatedItems);
             setNewItemText('');
+            // Keep the form open — user closes it manually via the dismiss button
         }
     };
 
@@ -721,104 +758,149 @@ export const ListDetail: React.FC = React.memo(() => {
             )}
 
             {!list?.archived && (
-                <form onSubmit={handleAddItem} className="flex gap-2">
-                    <div className="relative flex-1">
-                        <input
-                            type="text"
-                            value={newItemText}
-                            onChange={(e) => setNewItemText(e.target.value)}
-                            placeholder={t('lists.addItemPlaceholder')}
-                            className="w-full p-3 pr-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                        />
-                    </div>
-                    <button
-                        type="submit"
-                        className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-md transition-colors"
-                    >
-                        <Plus />
-                    </button>
-                    {/* Kebab / overflow menu */}
-                    <div className="relative" ref={moreMenuRef}>
-                        <button
-                            type="button"
-                            onClick={() => setMoreMenuOpen((prev) => !prev)}
-                            title={t('common.more', 'Mer')}
-                            className="p-3 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300"
-                        >
-                            <MoreVertical size={20} />
-                        </button>
-
-                        {moreMenuOpen && (
-                            <div className="absolute right-0 top-full mt-2 w-52 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                                {/* Reset */}
-                                <button
-                                    type="button"
-                                    onClick={() => { setMoreMenuOpen(false); setUncheckModalOpen(true); }}
-                                    disabled={!list.items.some(item => item.completed)}
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                                >
-                                    <RotateCcw size={16} className="text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                                    <span>{t('lists.reset')}</span>
-                                </button>
-
-                                {/* Import from list */}
-                                <button
-                                    type="button"
-                                    onClick={() => { setMoreMenuOpen(false); setImportFromListOpen(true); }}
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                                >
-                                    <FolderInput size={16} className="text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                                    <span>{t('lists.importFromList.buttonTitle')}</span>
-                                </button>
-
-                                {/* Import JSON to list */}
-                                <button
-                                    type="button"
-                                    onClick={() => { setMoreMenuOpen(false); setImportJsonModalOpen(true); }}
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                                >
-                                    <Upload size={16} className="text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                                    <span>{t('importJson.buttonTitle', 'Importera lista (JSON)')}</span>
-                                </button>
-
-                                {/* Export list */}
-                                <button
-                                    type="button"
-                                    onClick={() => { setMoreMenuOpen(false); setExportModalOpen(true); }}
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                                >
-                                    <Download size={16} className="text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                                    <span>{t('export.buttonTitle', 'Exportera lista (JSON)')}</span>
-                                </button>
-
-                                {/* Archive */}
-                                <button
-                                    type="button"
-                                    onClick={async () => {
-                                        setMoreMenuOpen(false);
-                                        await archiveList(list.id, true);
-                                    }}
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-orange-50 dark:hover:bg-orange-900/30 transition-colors"
-                                >
-                                    <Archive size={16} className="text-orange-500 dark:text-orange-400 flex-shrink-0" />
-                                    <span>{t('lists.archive', 'Arkivera lista')}</span>
-                                </button>
-
-                                <div className="border-t border-gray-100 dark:border-gray-700" />
-
-                                {/* Settings */}
-                                <button
-                                    type="button"
-                                    onClick={() => { setMoreMenuOpen(false); setSettingsOpen(true); }}
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                                >
-                                    <Settings size={16} className="text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                                    <span>{t('lists.settings.title')}</span>
-                                </button>
+                <>
+                    {showAddItemField ? (
+                        <form onSubmit={handleAddItem} ref={addItemRef} className="flex gap-2 animate-in fade-in slide-in-from-top-2 duration-150">
+                            <div className="relative flex-1">
+                                <input
+                                    type="text"
+                                    value={newItemText}
+                                    onChange={(e) => setNewItemText(e.target.value)}
+                                    placeholder={t('lists.addItemPlaceholder')}
+                                    className="w-full p-3 pr-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                    autoFocus
+                                />
                             </div>
-                        )}
-                    </div>
-                </form>
+                            <button
+                                type="submit"
+                                className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-md transition-colors"
+                            >
+                                <Plus />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowAddItemField(false);
+                                    setHideActionButtons(false);
+                                    setNewItemText('');
+                                }}
+                                className="p-3 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300"
+                                title={t('common.cancel', 'Avbryt')}
+                            >
+                                ✕
+                            </button>
+                        </form>
+                    ) : (
+                        <div className="flex justify-between">
+                            <div className="flex flex-col items-center gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowAddItemField(true);
+                                        setHideActionButtons(true);
+                                    }}
+                                    className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-md transition-colors"
+                                    title={t('lists.addItemButton', 'Lägg till ny punkt')}
+                                >
+                                    <Plus size={20} />
+                                </button>
+                                <span className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[80px] text-center">Lägg till</span>
+                            </div>
+                            {!hideActionButtons && (
+                                <>
+                                    <div className="flex flex-col items-center gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setUncheckModalOpen(true)}
+                                            disabled={!list.items.some(item => item.completed)}
+                                            className="p-3 bg-orange-50 dark:bg-orange-900/10 hover:bg-orange-100 dark:hover:bg-orange-900/20 rounded-xl transition-colors text-orange-600 dark:text-orange-400 disabled:opacity-40 disabled:cursor-not-allowed"
+                                            title={t('lists.reset', 'Återställ')}
+                                        >
+                                            <RotateCcw size={20} />
+                                        </button>
+                                        <span className="text-[9px] text-gray-500 dark:text-gray-400 truncate max-w-[80px] text-center">Återställ</span>
+                                    </div>
+                                    <div className="flex flex-col items-center gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setImportFromListOpen(true)}
+                                            className="p-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-700 transition-colors text-gray-600 dark:text-gray-300"
+                                            title={t('lists.importFromList.buttonTitle', 'Importera från lista')}
+                                        >
+                                            <FolderInput size={20} />
+                                        </button>
+                                        <span className="text-[9px] text-gray-500 dark:text-gray-400 truncate max-w-[80px] text-center">Hämta in</span>
+                                    </div>
+                                    <div className="flex flex-col items-center gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setImportJsonModalOpen(true)}
+                                            className="p-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-700 transition-colors text-gray-600 dark:text-gray-300"
+                                            title={t('importJson.buttonTitle', 'Importera lista (JSON)')}
+                                        >
+                                            <Upload size={20} />
+                                        </button>
+                                        <span className="text-[9px] text-gray-500 dark:text-gray-400 truncate max-w-[80px] text-center">Import</span>
+                                    </div>
+                                    <div className="flex flex-col items-center gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setExportModalOpen(true)}
+                                            className="p-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-700 transition-colors text-gray-600 dark:text-gray-300"
+                                            title={t('export.buttonTitle', 'Exportera lista (JSON)')}
+                                        >
+                                            <Download size={20} />
+                                        </button>
+                                        <span className="text-[9px] text-gray-500 dark:text-gray-400 truncate max-w-[80px] text-center">Export</span>
+                                    </div>
+                                    <div className="flex flex-col items-center gap-1">
+                                        <div className="relative" ref={moreMenuRef}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setMoreMenuOpen((prev) => !prev)}
+                                                title={t('common.more', 'Mer')}
+                                                className="p-3 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300"
+                                            >
+                                                <MoreVertical size={20} />
+                                            </button>
+                                            {moreMenuOpen && (
+                                            <div className="absolute right-0 top-full mt-2 w-52 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+
+                                                {/* Archive */}
+                                                <button
+                                                    type="button"
+                                                    onClick={async () => {
+                                                        setMoreMenuOpen(false);
+                                                        await archiveList(list.id, true);
+                                                    }}
+                                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-orange-50 dark:hover:bg-orange-900/30 transition-colors"
+                                                >
+                                                    <Archive size={16} className="text-orange-500 dark:text-orange-400 flex-shrink-0" />
+                                                    <span>{t('lists.archive', 'Arkivera lista')}</span>
+                                                </button>
+
+                                                <div className="border-t border-gray-100 dark:border-gray-700" />
+
+                                                {/* Settings */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setMoreMenuOpen(false); setSettingsOpen(true); }}
+                                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                                >
+                                                    <Settings size={16} className="text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                                                    <span>{t('lists.settings.title')}</span>
+                                                </button>
+                                            </div>
+                                            )}
+                                        </div>
+                                        <span className="text-[9px] text-gray-500 dark:text-gray-400 truncate max-w-[80px] text-center">Mer</span>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+                    
+                </>
             )}
 
             {list?.archived && (
@@ -1473,19 +1555,6 @@ export const ListDetail: React.FC = React.memo(() => {
                         </button>
                     </div>
 
-                    {/* Reset List Action */}
-                    <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
-                        <button
-                            onClick={() => {
-                                setSettingsOpen(false);
-                                setUncheckModalOpen(true);
-                            }}
-                            className="w-full flex items-center justify-center gap-2 p-3 text-orange-600 bg-orange-50 dark:bg-orange-900/10 hover:bg-orange-100 dark:hover:bg-orange-900/20 rounded-lg transition-colors"   
-                        >
-                            <RotateCcw size={18} />
-                            {t('lists.reset')}
-                        </button>
-                    </div>
 
                     {/* Delete List Action */}
                     <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
@@ -1547,7 +1616,7 @@ export const ListDetail: React.FC = React.memo(() => {
                     >
                         {t('lists.unpinConfirm.keepPinned', 'Behåll fäst och lämna')}
                     </button>
-                    <p className="text-center text-xs text-gray-500 mt-2">
+                    <p className="text-center text-[10px] text-gray-500 mt-2">
                         {t('lists.unpinConfirm.explanation', 'Du kan alltid ändra detta i listinställningarna senare.')}
                     </p>
                 </div>
