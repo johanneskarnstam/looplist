@@ -3,7 +3,7 @@ name: CI/CD Pages
 on:
   push:
     branches:
-      - master
+      - main
       - develop
 
 permissions:
